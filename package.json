@@ -1,0 +1,29 @@
+{
+  "name": "super-ai-pro-max-x9999-vip-taixiu",
+  "version": "1.0.0",
+  "description": "API dự đoán Tài Xỉu SunWin với các thuật toán nâng cao, tự động cập nhật và quản lý rủi ro.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "taixiu",
+    "sunwin",
+    "api",
+    "prediction",
+    "fastify",
+    "websocket",
+    "nodejs"
+  ],
+  "author": "Your Name",
+  "license": "ISC",
+  "dependencies": {
+    "@fastify/cors": "^8.3.0",
+    "fastify": "^4.22.2",
+    "ws": "^8.13.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
