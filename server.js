@@ -1,4 +1,4 @@
-Const Fastify = require("fastify");
+const Fastify = require("fastify");
 const cors = require("@fastify/cors");
 const WebSocket = require("ws");
 const fs = require("fs");
