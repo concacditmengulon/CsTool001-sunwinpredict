@@ -79,7 +79,7 @@ function decodeBinaryMessage(buffer) {
 
 // [NÂNG CẤP] Tự động cập nhật trọng số
 function updateModelPerformance(history) {
-    const models = ['trend', 'short', 'mean', 'switch', 'bridge', 'cycle', 'strongBias'];
+    const models = ['trend', 'short', 'mean', 'switch', 'bridge', 'cycle'];
     const newPerformance = {};
 
     for (const modelName of models) {
@@ -302,92 +302,6 @@ function aiVanNhatLogic(history) {
   }
 }
 
-// [MỚI] Mô hình "ƯU TIÊN BÊN MẠNH – KHÔNG CHỌN ĐẠI"
-function strongBiasModel(history) {
-    if (!history || history.length < 5) {
-        return { prediction: 0, reason: "Không đủ dữ liệu cho mô hình 'Ưu tiên bên mạnh'", score: 0 };
-    }
-
-    const last5Results = history.slice(-5).map(item => item.result);
-    const last3Results = history.slice(-3).map(item => item.result);
-    const last5Totals = history.slice(-5).map(item => item.total);
-    const lastResult = last5Results[last5Results.length - 1];
-
-    const taiCount5 = last5Results.filter(r => r === 'Tài').length;
-    const xiuCount5 = last5Results.filter(r => r === 'Xỉu').length;
-
-    // 1. Nếu 5 phiên cuối Tài >= 4 => dứt khoát theo Tài
-    if (taiCount5 >= 4) {
-        return { prediction: 'Tài', reason: '5 phiên gần nhất có 4 Tài trở lên', score: 1 };
-    }
-
-    // 2. Nếu 5 phiên cuối Xỉu >= 4 => dứt khoát theo Xỉu
-    if (xiuCount5 >= 4) {
-        return { prediction: 'Xỉu', reason: '5 phiên gần nhất có 4 Xỉu trở lên', score: 1 };
-    }
-
-    // 3. Nếu 3 phiên liên tục gần nhất là Tài hoặc Xỉu → ưu tiên đảo cầu
-    const last3AreSame = last3Results.every(r => r === last3Results[0]);
-    if (last3AreSame) {
-        const prediction = last3Results[0] === 'Tài' ? 'Xỉu' : 'Tài';
-        return { prediction, reason: '3 phiên gần nhất giống nhau, dự đoán đảo cầu', score: 0.8 };
-    }
-
-    // 4. Nếu zigzag rõ ràng T-X-T-X-T => đoán tiếp lặp
-    const isZigzag = last5Results.every((v, i, arr) => i === 0 || v !== arr[i - 1]);
-    if (isZigzag) {
-        const prediction = lastResult === 'Tài' ? 'Xỉu' : 'Tài';
-        return { prediction, reason: 'Phát hiện mẫu zigzag rõ ràng', score: 0.7 };
-    }
-    
-    // 5. Tổng điểm trung bình gần đây
-    const avg5 = last5Totals.reduce((a, b) => a + b, 0) / 5;
-    if (avg5 >= 12) {
-        return { prediction: 'Tài', reason: `Điểm trung bình 5 phiên cao (${avg5.toFixed(1)})`, score: 0.6 };
-    }
-    if (avg5 <= 9.5) {
-        return { prediction: 'Xỉu', reason: `Điểm trung bình 5 phiên thấp (${avg5.toFixed(1)})`, score: 0.6 };
-    }
-    
-    // 6. Tổng tăng/giảm đều 3 phiên
-    const last3Totals = history.slice(-3).map(item => item.total);
-    if (last3Totals[2] > last3Totals[1] && last3Totals[1] > last3Totals[0]) {
-        return { prediction: 'Tài', reason: 'Tổng điểm 3 phiên gần nhất tăng đều', score: 0.6 };
-    }
-    if (last3Totals[2] < last3Totals[1] && last3Totals[1] < last3Totals[0]) {
-        return { prediction: 'Xỉu', reason: 'Tổng điểm 3 phiên gần nhất giảm đều', score: 0.6 };
-    }
-
-    // 7. Cầu T-X-T-X lặp 4 lần liên tục (đã được bao gồm trong zigzag)
-    // 8. Tổng gần nhất cực cao (>=17)
-    if (last5Totals[last5Totals.length - 1] >= 17) {
-        return { prediction: 'Tài', reason: 'Tổng điểm phiên cuối cực cao (>=17)', score: 0.8 };
-    }
-    // 9. Tổng gần nhất cực thấp (<=6)
-    if (last5Totals[last5Totals.length - 1] <= 6) {
-        return { prediction: 'Xỉu', reason: 'Tổng điểm phiên cuối cực thấp (<=6)', score: 0.8 };
-    }
-
-    // 10. Tổng 5 phiên gần nhất toàn cao (>=12)
-    if (last5Totals.every(t => t >= 12)) {
-        return { prediction: 'Tài', reason: 'Tổng điểm 5 phiên gần nhất đều cao', score: 0.9 };
-    }
-    // 11. Tổng 5 phiên gần nhất toàn thấp (<=9)
-    if (last5Totals.every(t => t <= 9)) {
-        return { prediction: 'Xỉu', reason: 'Tổng điểm 5 phiên gần nhất đều thấp', score: 0.9 };
-    }
-    
-    // Nếu không có mẫu nào mạnh, sử dụng logic cuối cùng
-    const totalTai = history.filter(item => item.result === 'Tài').length;
-    const totalXiu = history.filter(item => item.result === 'Xỉu').length;
-    if (totalTai > totalXiu + 2) return { prediction: 'Xỉu', reason: 'Tổng thể Tài nhiều hơn, dự đoán Xỉu', score: 0.5 };
-    if (totalXiu > totalTai + 2) return { prediction: 'Tài', reason: 'Tổng thể Xỉu nhiều hơn, dự đoán Tài', score: 0.5 };
-
-    // Không có mẫu rõ ràng, dự đoán đảo chiều
-    const prediction = lastResult === 'Tài' ? 'Xỉu' : 'Tài';
-    return { prediction, reason: 'Không có mẫu mạnh, dự đoán đảo chiều', score: 0.5 };
-}
-
 // [MỚI] Hệ thống quản lý rủi ro
 function calculateRiskFactor(history) {
     if (history.length < 20) return 0;
@@ -421,8 +335,7 @@ function generatePrediction(history) {
         switch: recentSwitch(history),
         bridge: smartBridgeBreak(history),
         pattern: patternRecognitionModel(history),
-        vannhat: aiVanNhatLogic(history),
-        strongBias: strongBiasModel(history)
+        vannhat: aiVanNhatLogic(history)
     };
     
     // Lưu lại dự đoán của từng mô hình
@@ -432,14 +345,7 @@ function generatePrediction(history) {
     }
     
     const baseWeights = {
-        trend: 0.15, 
-        short: 0.15, 
-        mean: 0.1, 
-        switch: 0.1, 
-        bridge: 0.15, 
-        pattern: 0.15,
-        vannhat: 0.1,
-        strongBias: 0.1
+        trend: 0.15, short: 0.15, mean: 0.1, switch: 0.1, bridge: 0.15, pattern: 0.2, vannhat: 0.15
     };
     
     let taiScore = 0;
